@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:minhas_anotacoes/helper/AnotacaoHelper.dart';
+import 'package:minhas_anotacoes/model/Anotacao.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -10,6 +12,8 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   TextEditingController _tituloController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
+  var _db = AnotacaoHelper();
+  List<Anotacao> _anotacoes = <Anotacao>[];
 
   _exibirTelaCadastro() {
     showDialog(
@@ -43,6 +47,8 @@ class _HomeState extends State<Home> {
                 child: Text("CANCELAR")),
             TextButton(
                 onPressed: () {
+                  _salvarAnotacao();
+
                   Navigator.pop(context);
                 },
                 child: Text("SALVAR"))
@@ -52,6 +58,42 @@ class _HomeState extends State<Home> {
     );
   }
 
+  _recuperarAnotacoes() async {
+    List anotacoesRecuperadas = await _db.recuperarAnotacao();
+    List<Anotacao> listaTemporaria = <Anotacao>[];
+    for (var item in anotacoesRecuperadas) {
+      Anotacao anotacao = Anotacao.fromMap(item);
+      listaTemporaria.add(anotacao);
+    }
+    setState(() {
+      _anotacoes = listaTemporaria;
+    });
+    listaTemporaria = [];
+
+    print("Lista anotações: " + anotacoesRecuperadas.toString());
+  }
+
+  _salvarAnotacao() async {
+    String titulo = _tituloController.text;
+    String descricao = _descricaoController.text;
+
+    //print("data atual: " + DateTime.now().toString());
+    Anotacao anotacao = Anotacao(titulo, descricao, DateTime.now().toString());
+    int resultado = await _db.salvarAnotacao(anotacao);
+    print("salvar anotação: " + resultado.toString());
+
+    _tituloController.clear();
+    _descricaoController.clear();
+
+    _recuperarAnotacoes();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recuperarAnotacoes();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,7 +101,20 @@ class _HomeState extends State<Home> {
         title: Text("Minhas anotações"),
         backgroundColor: Colors.lightGreen,
       ),
-      body: Container(),
+      body: Column(
+        children: [
+          Expanded(
+              child: ListView.builder(
+            itemCount: _anotacoes.length,
+            itemBuilder: (context, index) {
+              final item = _anotacoes[index];
+              return Card(
+                child: ListTile(title: Text(item.titulo.toString()),subtitle: Text("${item.data} - ${item.descricao}"),),
+              );
+            },
+          ))
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.lightGreen,
         foregroundColor: Colors.white,
